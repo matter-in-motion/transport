@@ -1,0 +1,33 @@
+{
+  "name": "@matter-in-motion/transport",
+  "version": "1.0.0",
+  "description": "Matter in Motion Extension. Transport",
+  "main": "index.js",
+  "scripts": {
+    "test": "nyc ava"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/matter-in-motion/transport.git"
+  },
+  "keywords": [
+    "matter-in-motion",
+    "mmextension",
+    "transport",
+    "extension",
+    "network"
+  ],
+  "author": "Alexey Novikov <v@2dubs.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/matter-in-motion/transport/issues"
+  },
+  "homepage": "https://github.com/matter-in-motion/transport#readme",
+  "devDependencies": {
+    "@matter-in-motion/app": "^1.0.0",
+    "@matter-in-motion/logger-pino": "^1.0.0",
+    "ava": "^2.4.0",
+    "nyc": "^14.1.1",
+    "units": "^5.2.0"
+  }
+}
