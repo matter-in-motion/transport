@@ -7,7 +7,7 @@
 
 ## Transport
 
-Matter In Motion extension abstraction over transport protocols such as http, websockets, etc.
+Matter In Motion events transport extension.
 
 ### Installation
 
@@ -16,31 +16,45 @@ Matter In Motion extension abstraction over transport protocols such as http, we
 ### Usage
 
 1. Add it to your extensions in the settings.
-2. Add at least one trasnport extension
-  - [http](https://github.com/matter-in-motion/transports.http)
-  - [websockets](https://github.com/matter-in-motion/transports.websockets)
-3. Add listener to the transport events
+2. That's it.
 
 ```js
-
-
+const transport = app.reuire('transport');
+transport.on('event/:id', (msg, params) => console.log(params.id, msg));
 ```
+
+To emit event just:
+
+```js
+transport.emit('event/1');
+```
+
+_Caution the `emit` method is anyc and returns a Promise, but it never throws. check the [Hooks](#hooks) part_
+
+### Transports
+
+You can add other transports:
+
+- [http](https://github.com/matter-in-motion/transports.http)
+- [websockets](https://github.com/matter-in-motion/transports.websockets)
+
+All transports will start with application `await app.start()`
 
 ### Events
 
-* connect <connection> – emited with incoming connection
-* close <connection> – emited when connection is closed
-* error <error> – emited when transport error has ocured
-* message <message> – emited with incoming message
+The Transport uses Radix Tree for events look up so it is very fast. You can subscribe many handlers to one route. You can use `*` and `:placeholder` patterns. The last parameter in the handler will be all `placeholders` found in the path.
 
-### Message
+#### on([prefixes], path, handler)
 
-Message is simple object that get passed through app. By coming out of transport it has this properties:
+Subscribe for the path. Prefixes can be omited.
 
-* **connection** – the connection where message came from.
-* **meta** – metadata that was passed with the message.
-* **body** – raw body of the message.
+#### off([prefixes], path, handler)
 
+Unsubscribe from the path. Prefixes can be omited.
+
+### Hooks
+
+There are async hooks available for `emit`, `start`, and `stop` methods.
 
 ### Settings
 
