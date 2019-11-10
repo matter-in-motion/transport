@@ -11,7 +11,7 @@ class Transport {
     this.handlers = new EventEmitter();
     this.transports = {};
 
-    hooks(this, 'emit', 'start', 'stop');
+    hooks(this, 'emit', 'start', 'stop', 'send');
   }
 
   init({ app, logger, 'transports?': transports }) {
@@ -31,7 +31,11 @@ class Transport {
     this.transports[name] = transport;
 
     transport.emit = (path, ...args) => this.emit(`${name}${path}`, ...args);
-    transport.error = error => this.handleError(name, error);
+    transport.error = error => this.handleError(error, name);
+  }
+
+  get(name) {
+    return this.transports[name];
   }
 
   emit(path, ...args) {
@@ -49,13 +53,12 @@ class Transport {
   }
 
   catchEmit(error, path) {
-    this.logger.error(
-      {
-        path,
-        error
-      },
-      'Error emiting the event'
-    );
+    this.logError('Failed to emit the event', error, { path });
+  }
+
+  handleError(error, transport) {
+    this.logError('Transport error', error, { transport });
+    this.emit(`error/${transport}`, error);
   }
 
   on(prefixes, path, handler) {
@@ -101,18 +104,6 @@ class Transport {
     return this;
   }
 
-  handleError(transport, error) {
-    this.logger.error(
-      {
-        transport,
-        error
-      },
-      'Error'
-    );
-
-    this.emit(`error/${transport}`, error);
-  }
-
   start() {
     const promises = Object.entries(this.transports).map(([name, transport]) =>
       transport.start().then(address => {
@@ -146,6 +137,37 @@ class Transport {
     );
 
     return Promise.all(promises);
+  }
+
+  send(message) {
+    if (!message) {
+      throw new Error('Can not send empty message');
+    }
+
+    const transport = this.get(message.transport);
+    if (!transport) {
+      throw new Error(`Transport '${message.transport}' not found`);
+    }
+
+    return transport.send(message);
+  }
+
+  catchSend(error, message) {
+    this.logError('Failed to send message', error, {
+      transport: message.transport
+    });
+
+    throw error;
+  }
+
+  logError(msg, error, data) {
+    this.logger.error(
+      {
+        ...data,
+        stack: error.stack
+      },
+      `${msg}: ${error}`
+    );
   }
 }
 

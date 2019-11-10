@@ -4,9 +4,8 @@ const App = require('@matter-in-motion/app');
 const extension = require('../index');
 
 class GoodTransport {
-  constructor(response) {
-    this.initRequired = true;
-    this.mockResponse = response;
+  constructor(send) {
+    this.send = send;
   }
 
   init() {}
@@ -88,18 +87,13 @@ test('start without transports', async t => {
 
 test('starts and stops transports', async t => {
   const app = createApp({
-    good: new GoodTransport({})
+    good: new GoodTransport()
   });
 
   await app.start();
   const transport = app.require('transport');
-  const goodT = transport.transports.good;
-  t.truthy(goodT);
-  t.is(goodT.state, 'started');
   const good = app.require('transports.good');
-  t.is(good, goodT);
-  t.is(good.state, 'started');
-
+  t.is(good, transport.get('good'));
   t.is(typeof good.emit, 'function');
   t.is(typeof good.error, 'function');
 
@@ -145,7 +139,7 @@ test('on and off with prefixes', async t => {
   const message = 'test';
 
   const app = createApp({
-    good: new GoodTransport({})
+    good: new GoodTransport()
   });
   await app.start();
   const transport = app.require('transport');
@@ -164,7 +158,7 @@ test('on and off with prefixes', async t => {
 
 test('on and off faling pathes', async t => {
   const app = createApp({
-    good: new GoodTransport({})
+    good: new GoodTransport()
   });
   await app.start();
 
@@ -185,7 +179,7 @@ test('on and off faling pathes', async t => {
 test('checks the events', async t => {
   t.plan(8);
   const app = createApp({
-    good: new GoodTransport(response => t.is(response, 'response'))
+    good: new GoodTransport()
   });
 
   const fakeConnection = {};
@@ -204,10 +198,74 @@ test('checks the events', async t => {
     })
     .on('error/good', e => t.is(e.message, 'error'));
 
-  const goodTransport = app.require('transports.good');
+  const goodTransport = transport.get('good');
   await goodTransport.onConnect(fakeConnection);
   await goodTransport.onMessage('message');
   await goodTransport.error(new Error('error'));
 
+  await app.stop();
+});
+
+test('not fails to emit with a throw in the handler', async t => {
+  const app = createApp({
+    good: new GoodTransport()
+  });
+
+  await app.start();
+  const transport = app.require('transport');
+  transport.on('test', () => {
+    throw Error();
+  });
+
+  await transport.emit('test');
+  t.pass();
+  await app.stop();
+});
+
+test('not fails to emit with no handler', async t => {
+  const app = createApp({
+    good: new GoodTransport()
+  });
+
+  await app.start();
+  const transport = app.require('transport');
+  await transport.emit('test');
+  t.pass();
+});
+
+test('checks the send', async t => {
+  const app = createApp({
+    good: new GoodTransport(msg => {
+      t.is(msg.response, 'RESPONSE');
+      return Promise.resolve();
+    })
+  });
+
+  await app.start();
+  const transport = app.require('transport');
+  transport.on('test', msg => {
+    msg.response = 'RESPONSE';
+    transport.send(msg);
+  });
+
+  await transport.emit('test', { transport: 'good' });
+  await app.stop();
+});
+
+test('fails the send', async t => {
+  t.plan(3);
+  const app = createApp({
+    good: new GoodTransport(() => Promise.reject(new Error('TEST')))
+  });
+
+  await app.start();
+  const transport = app.require('transport');
+  transport.on('test', msg => {
+    transport.send(msg).catch(() => t.pass());
+  });
+
+  await transport.emit('test');
+  await transport.emit('test', {});
+  await transport.emit('test', { transport: 'good' });
   await app.stop();
 });
