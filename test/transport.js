@@ -10,13 +10,13 @@ class GoodTransport {
 
   init() {}
 
-  async onConnect(connection) {
+  onConnect(connection) {
     this.connection = connection;
-    await this.emit('/connection', connection);
+    this.emit('connection', connection);
   }
 
-  async onMessage(body) {
-    await this.emit('/message/test/path', {
+  onMessage(body) {
+    this.emit('message/test/path', {
       body,
       transport: 'good',
       url: new URL('http://example.com/good/test/path?foo=bar'),
@@ -80,8 +80,6 @@ test('start without transports', async t => {
   const app = createApp();
   await app.start();
   const transport = app.require('transport');
-  t.is(typeof transport.on, 'function');
-  t.is(typeof transport.off, 'function');
   t.is(typeof transport.emit, 'function');
 });
 
@@ -128,51 +126,10 @@ test('on and off from routes', async t => {
 
   const app = createApp();
   await app.start();
+  app.on('transport/message', handler);
   const transport = app.require('transport');
-  transport.on('good/message', handler);
-  await transport.emit('good/message', message);
-  transport.off('good/message', handler);
-  await app.stop();
-});
-
-test('on and off with prefixes', async t => {
-  const message = 'test';
-
-  const app = createApp({
-    good: new GoodTransport()
-  });
-  await app.start();
-  const transport = app.require('transport');
-
-  const handler1 = msg => t.is(msg, message);
-  const handler2 = msg => t.is(msg, message);
-
-  transport.on(['good'], '/message', handler1);
-  transport.on(['good'], '/message', handler2);
-  await transport.emit('good/message', message);
-
-  transport.off(['good'], '/message', handler1);
-  transport.off(['good'], '/message', handler2);
-  await app.stop();
-});
-
-test('on and off faling pathes', async t => {
-  const app = createApp({
-    good: new GoodTransport()
-  });
-  await app.start();
-
-  const transport = app.require('transport');
-  const err1 = t.throws(() => {
-    transport.on('/message');
-  });
-  t.is(err1.message, 'Handler should be a function but got undefined');
-
-  const err2 = t.throws(() => {
-    transport.off('/message');
-  });
-  t.is(err2.message, 'Handler should be a function but got undefined');
-
+  transport.emit('message', message);
+  app.off('transport/message', handler);
   await app.stop();
 });
 
@@ -185,10 +142,11 @@ test('checks the events', async t => {
   const fakeConnection = {};
 
   await app.start();
-  const transport = app.require('transport');
-  transport
-    .on('good/connection', connection => t.is(connection, fakeConnection))
-    .on('good/message/test/path', msg => {
+  app
+    .on('transport/good/connection', connection => {
+      t.is(connection, fakeConnection);
+    })
+    .on('transport/good/message/test/path', msg => {
       t.truthy(msg);
       t.is(msg.connection, fakeConnection);
       t.is(msg.transport, 'good');
@@ -196,8 +154,9 @@ test('checks the events', async t => {
       t.is(typeof msg.url, 'object');
       t.is(msg.url.searchParams.get('foo'), 'bar');
     })
-    .on('error/good', e => t.is(e.message, 'error'));
+    .on('error/transport/good', e => t.is(e.message, 'error'));
 
+  const transport = app.require('transport');
   const goodTransport = transport.get('good');
   await goodTransport.onConnect(fakeConnection);
   await goodTransport.onMessage('message');
@@ -212,12 +171,12 @@ test('not fails to emit with a throw in the handler', async t => {
   });
 
   await app.start();
-  const transport = app.require('transport');
-  transport.on('test', () => {
+  app.on('transport/test', () => {
     throw Error();
   });
 
-  await transport.emit('test');
+  const transport = app.require('transport');
+  transport.emit('test');
   t.pass();
   await app.stop();
 });
@@ -229,26 +188,26 @@ test('not fails to emit with no handler', async t => {
 
   await app.start();
   const transport = app.require('transport');
-  await transport.emit('test');
+  transport.emit('test');
   t.pass();
 });
 
 test('checks the send', async t => {
+  t.plan(1);
   const app = createApp({
     good: new GoodTransport(msg => {
       t.is(msg.response, 'RESPONSE');
-      return Promise.resolve();
     })
   });
 
   await app.start();
   const transport = app.require('transport');
-  transport.on('test', msg => {
+  app.on('transport/test', msg => {
     msg.response = 'RESPONSE';
     transport.send(msg);
   });
 
-  await transport.emit('test', { transport: 'good' });
+  transport.emit('test', { transport: 'good' });
   await app.stop();
 });
 
@@ -260,12 +219,12 @@ test('fails the send', async t => {
 
   await app.start();
   const transport = app.require('transport');
-  transport.on('test', msg => {
+  app.on('transport/test', msg => {
     transport.send(msg).catch(() => t.pass());
   });
 
-  await transport.emit('test');
-  await transport.emit('test', {});
-  await transport.emit('test', { transport: 'good' });
+  transport.emit('test');
+  transport.emit('test', {});
+  transport.emit('test', { transport: 'good' });
   await app.stop();
 });
