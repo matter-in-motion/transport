@@ -76,13 +76,6 @@ function createApp(transports) {
   });
 }
 
-test('start without transports', async t => {
-  const app = createApp();
-  await app.start();
-  const transport = app.require('transport');
-  t.is(typeof transport.emit, 'function');
-});
-
 test('starts and stops transports', async t => {
   const app = createApp({
     good: new GoodTransport()
@@ -124,11 +117,14 @@ test('on and off from routes', async t => {
   const message = 'test';
   const handler = msg => t.is(msg, message);
 
-  const app = createApp();
+  const app = createApp({
+    good: new GoodTransport()
+  });
+
   await app.start();
   app.on('transport/message', handler);
   const transport = app.require('transport');
-  transport.emit('message', message);
+  await transport.emit('message', message);
   app.off('transport/message', handler);
   await app.stop();
 });
@@ -158,9 +154,9 @@ test('checks the events', async t => {
 
   const transport = app.require('transport');
   const goodTransport = transport.get('good');
-  await goodTransport.onConnect(fakeConnection);
-  await goodTransport.onMessage('message');
-  await goodTransport.error(new Error('error'));
+  goodTransport.onConnect(fakeConnection);
+  goodTransport.onMessage('message');
+  goodTransport.error(new Error('error'));
 
   await app.stop();
 });
@@ -176,7 +172,7 @@ test('not fails to emit with a throw in the handler', async t => {
   });
 
   const transport = app.require('transport');
-  transport.emit('test');
+  await transport.emit('test');
   t.pass();
   await app.stop();
 });
@@ -188,7 +184,7 @@ test('not fails to emit with no handler', async t => {
 
   await app.start();
   const transport = app.require('transport');
-  transport.emit('test');
+  await transport.emit('test');
   t.pass();
 });
 
@@ -207,7 +203,29 @@ test('checks the send', async t => {
     transport.send(msg);
   });
 
-  transport.emit('test', { transport: 'good' });
+  await transport.emit('test', { transport: 'good' });
+  await app.stop();
+});
+
+test('the emit hooks', async t => {
+  const app = createApp({
+    good: new GoodTransport()
+  });
+
+  await app.start();
+  const transport = app.require('transport');
+
+  app.on('transport/test', msg => {
+    t.is(msg.test, 'test');
+  });
+
+  transport.will('emit', (path, msg) => {
+    t.is(path, 'test');
+    t.is(msg.transport, 'good');
+    msg.test = 'test';
+  });
+
+  await transport.emit('test', { transport: 'good' });
   await app.stop();
 });
 

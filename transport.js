@@ -6,26 +6,23 @@ class Transport {
     this.initRequired = true;
     this.transports = {};
 
-    hooks(this, 'start', 'stop', 'send');
+    hooks(this, 'emit', 'start', 'stop', 'send');
   }
 
-  init({ app, logger, 'transports?': transports }) {
+  init({ app, logger, transports }) {
     this.app = app;
     this.logger = logger.get('transport');
 
-    if (transports && !transports.isEmpty()) {
-      transports.forEach((transport, name) =>
-        this.addTransport(name, transport)
-      );
-    }
+    transports.forEach((transport, name) => this.addTransport(name, transport));
 
     app.did('start', () => this.start());
-    app.will('stop', () => this.stop());
+    app.did('stop', () => this.stop());
   }
 
   addTransport(name, transport) {
     this.transports[name] = transport;
-    transport.emit = (path, ...args) => this.emit(`${name}/${path}`, ...args);
+    transport.emit = (path, ...args) =>
+      this.handleEvent(`${name}/${path}`, ...args);
     transport.error = error => this.handleError(error, name);
   }
 
@@ -33,13 +30,18 @@ class Transport {
     return this.transports[name];
   }
 
-  emit(path, ...args) {
+  async handleEvent(path, ...args) {
     this.logger.info({ path }, 'Transport Event');
-    try {
-      this.app.emit(`transport/${path}`, ...args);
-    } catch (error) {
-      this.logError('Failed to emit event', error, { path });
-    }
+    await this.emit(path, ...args);
+  }
+
+  // !! >> this is async hooks method
+  emit(path, ...args) {
+    this.app.emit(`transport/${path}`, ...args);
+  }
+
+  catchEmit(error, path) {
+    this.logError('Failed to emit event', error, { path });
   }
 
   handleError(error, transport) {

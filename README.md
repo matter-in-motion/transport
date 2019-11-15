@@ -1,13 +1,13 @@
 # Matter In Motion
 
-[![NPM Version](https://img.shields.io/npm/v/matter-in-motion/transport.svg?style=flat-square)](https://www.npmjs.com/package/matter-in-motion/transport)
-[![NPM Downloads](https://img.shields.io/npm/dt/matter-in-motion/transport.svg?style=flat-square)](https://www.npmjs.com/package/matter-in-motion/transport)
+[![NPM Version](https://img.shields.io/npm/v/@matter-in-motion/transport.svg?style=flat-square)](https://www.npmjs.com/package/@matter-in-motion/transport)
+[![NPM Downloads](https://img.shields.io/npm/dt/@matter-in-motion/transport.svg?style=flat-square)](https://www.npmjs.com/package/@matter-in-motion/transport)
 
 **Node.js framework for building applications (cli, server, etc...).**
 
 ## Transport
 
-Matter In Motion events transport extension.
+Matter In Motion transport extension.
 
 ### Installation
 
@@ -16,45 +16,32 @@ Matter In Motion events transport extension.
 ### Usage
 
 1. Add it to your extensions in the settings.
-2. That's it.
+1. Add at least one transport extension
 
 ```js
-const transport = app.reuire('transport');
-transport.on('event/:id', (msg, params) => console.log(params.id, msg));
+app.on('transport/http/get/user/:id', (msg, params) =>
+  console.log('user', params.id)
+);
 ```
-
-To emit event just:
-
-```js
-transport.emit('event/1');
-```
-
-_Caution the `emit` method is anyc and returns a Promise, but it never throws. check the [Hooks](#hooks) part_
 
 ### Transports
 
 You can add other transports:
 
 - [http](https://github.com/matter-in-motion/transports.http)
-- [websockets](https://github.com/matter-in-motion/transports.websockets)
+- [websockets](https://github.com/matter-in-motion/transports.websockets) - wip
 
 All transports will start with application `await app.start()`
 
-### Events
+### Methods
 
-The Transport uses Radix Tree for events look up so it is very fast. You can subscribe many handlers to one route. You can use `*` and `:placeholder` patterns. The last parameter in the handler will be all `placeholders` found in the path.
+#### send(message)
 
-#### on([prefixes], path, handler)
-
-Subscribe for the path. Prefixes can be omited.
-
-#### off([prefixes], path, handler)
-
-Unsubscribe from the path. Prefixes can be omited.
+Sends the response set for the message. For the message structure look into individual transport extension documentation.
 
 ### Hooks
 
-There are async hooks available for `emit`, `start`, and `stop` methods.
+There are [async hooks](https://www.npmjs.com/package/async-hooks) available for `emit`, `send`, `start`, and `stop` methods.
 
 ### Settings
 
