@@ -11,11 +11,11 @@ Matter In Motion transport extension.
 
 ### Installation
 
-`npm i @matter-in-motion/trasnport`
+`npm i @matter-in-motion/transport`
 
 ### Usage
 
-1. Add it to your extensions in the settings.
+1. Add `transport` to your extensions in the settings.
 1. Add at least one transport extension
 
 ```js
